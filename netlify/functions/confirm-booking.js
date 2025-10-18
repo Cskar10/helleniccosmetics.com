@@ -47,7 +47,7 @@ BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//Hellenic Cosmetics//EN
 BEGIN:VEVENT
-UID:${booking.id}@hellenic-cosmetics.com
+UID:${booking.id}@helleniccosmetics.com
 DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z
 DTSTART;TZID=Australia/Melbourne:${booking.appointment_datetime_local.replace(/[-: ]/g, "").slice(0, 13)}00
 SUMMARY:Confirmed Appointment - ${booking.service}
@@ -67,7 +67,7 @@ END:VCALENDAR
 
     const msg = {
       to: booking.email,
-      from: { email: "bookings@hellenic-cosmetics.com", name: "Hellenic Cosmetics" },
+      from: { email: "bookings@helleniccosmetics.com", name: "Hellenic Cosmetics" },
       subject: "Your Appointment is Confirmed",
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">

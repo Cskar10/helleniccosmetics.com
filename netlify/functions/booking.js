@@ -103,7 +103,7 @@ Future Bookings Policy:
     const msg = {
       to: email,
       cc: adminEmail,
-      from: { email: "bookings@hellenic-cosmetics.com", name: "Hellenic Cosmetics" },
+      from: { email: "bookings@helleniccosmetics.com", name: "Hellenic Cosmetics" },
       subject: `Your Appointment Enquiry – ${service}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
