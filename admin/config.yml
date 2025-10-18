@@ -1,0 +1,36 @@
+backend:
+  name: git-gateway
+  branch: main # your default branch on GitHub
+
+local_backend: true
+
+site_url: https://helleniccosmetics.com
+display_url: https://helleniccosmetics.com
+
+media_folder: "images/uploads" # where uploaded files go in your repo
+public_folder: "/images/uploads"
+
+collections:
+  # Example content collection (edit as needed)
+  - name: "bookings"
+    label: "Bookings"
+    folder: "content/bookings"
+    create: true
+    slug: "{{name}}-{{date}}"
+    format: "json"
+    fields:
+      - { label: "Name", name: "name", widget: "string" }
+      - { label: "Email", name: "email", widget: "string" }
+      - { label: "Service", name: "service", widget: "string" }
+      - { label: "Date", name: "date", widget: "datetime" }
+      - { label: "Time", name: "time", widget: "string" }
+      - { label: "Confirmed", name: "confirmed", widget: "boolean", default: false }
+      - { label: "Notes", name: "notes", widget: "text", required: false }
+
+publish_mode: editorial_workflow
+logo_url: https://helleniccosmetics.com/images/logo.png
+
+slug:
+  clean_accents: true
+  encoding: "unicode"
+  sanitize_replacement: "-"
