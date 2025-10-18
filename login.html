@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login - Hellenic Cosmetics</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet" />
+  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+  <div class="bg-white p-8 rounded shadow w-96 text-center">
+    <h1 class="text-xl font-bold mb-4">Admin Login</h1>
+    <button id="login-btn" class="bg-pink-600 text-white px-4 py-2 rounded">Log In</button>
+  </div>
+
+  <script>
+    const loginBtn = document.getElementById("login-btn");
+
+    // Always start clean (clear any cached session)
+    netlifyIdentity.on("init", user => {
+      if (user) netlifyIdentity.logout();
+    });
+
+    // Open login modal on click
+    loginBtn.addEventListener("click", () => {
+      netlifyIdentity.open("login");
+    });
+
+    // Redirect to admin page after login
+    netlifyIdentity.on("login", () => {
+      window.location.href = "/admin.html";
+    });
+
+    // Initialize the widget once
+    netlifyIdentity.init();
+  </script>
+</body>
+</html>
