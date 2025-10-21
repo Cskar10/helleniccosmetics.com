@@ -74,10 +74,23 @@ exports.handler = async (event) => {
       INSERT INTO bookings 
         (name, email, service, appointment_datetime_local, appointment_datetime_utc, created_at)
       VALUES ($1, $2, $3, $4, $5, NOW())
+      ON CONFLICT (email, appointment_datetime_utc) DO NOTHING
       RETURNING *;
     `;
     const values = [name, email, service, melbourneForDB, utcForDB];
     const result = await client.query(insertQuery, values);
+
+    if (result.rowCount === 0) {
+      await client.end();
+      return {
+        statusCode: 409,
+        body: JSON.stringify({
+          error:
+            "You already have a pending enquiry for this email and time slot. Please wait for a confirmation or choose a different time.",
+        }),
+      };
+    }
+
     const booking = result.rows[0];
     await client.end();
 
