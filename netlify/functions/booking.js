@@ -49,16 +49,28 @@ exports.handler = async (event) => {
       };
     }
 
-    // Rule 2: Booking time between 5:30pm–9pm
-    if (hour < 17.30 || hour >= 21) {
+    const dayOfWeek = melbourneLocal.getDay(); // 0 = Sunday, 6 = Saturday
+    const isSunday = dayOfWeek === 0;
+
+    // Rule 2: Booking time windows (Mon-Sat 5:30pm-9pm, Sun 10am-4pm)
+    const withinWeekdayHours =
+      (hour > 17 || (hour === 17 && minute >= 30)) &&
+      (hour < 21 || (hour === 21 && minute === 0));
+    const withinSundayHours =
+      (hour > 10 || (hour === 10 && minute >= 0)) &&
+      (hour < 16 || (hour === 16 && minute === 0));
+
+    const isWithinAllowedHours = isSunday ? withinSundayHours : withinWeekdayHours;
+
+    if (!isWithinAllowedHours) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "Bookings are only available between 5:30 PM and 9:00 PM Mon - Sat.",
+          error:
+            "Bookings are available Monday-Saturday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.",
         }),
       };
     }
-
     // Step 3: Connect to PostgreSQL
     const client = new Client({
       host: process.env.PGHOST,
@@ -194,3 +206,4 @@ function getFirstSunday(year, month) {
   while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
+
