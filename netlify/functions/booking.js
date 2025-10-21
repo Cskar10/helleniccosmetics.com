@@ -49,12 +49,12 @@ exports.handler = async (event) => {
       };
     }
 
-    // Rule 2: Booking time between 5pm–9pm
-    if (hour < 17 || hour >= 21) {
+    // Rule 2: Booking time between 5:30pm–9pm
+    if (hour < 17.30 || hour >= 21) {
       return {
         statusCode: 400,
         body: JSON.stringify({
-          error: "Bookings are only available between 5:00 PM and 9:00 PM.",
+          error: "Bookings are only available between 5:30 PM and 9:00 PM Mon - Sat.",
         }),
       };
     }
