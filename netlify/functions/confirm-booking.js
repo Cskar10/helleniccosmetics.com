@@ -75,9 +75,10 @@ END:VCALENDAR
 
           <p>We are pleased to confirm your appointment with <strong>Hellenic Cosmetics</strong>.</p>
 
-          <p><strong>📅 Date:</strong> ${formattedDate}<br>
-          <strong>🕒 Time:</strong> ${booking.appointment_datetime_local.split(" ")[1]}<br>
-          <strong>💆 Service:</strong> ${booking.service}</p>
+          <p><strong>Appointment Date:</strong> ${formattedDate}<br>
+          <strong>Appointment Time:</strong> ${booking.appointment_datetime_local.split(" ")[1]}<br>
+          <strong>Service:</strong> ${booking.service}<br>
+          <strong>Phone:</strong> ${booking.phone || ""}</p>
 
           <p>Your appointment has been confirmed. Please find your calendar invite attached.</p>
 
@@ -86,21 +87,21 @@ END:VCALENDAR
           <h3 style="color: #b8926a;">Future Bookings Policy</h3>
 
           <p>
-            • A non-refundable deposit is required to secure your booking.<br>
-            • Appointments may be rescheduled once with 48 hours' notice.<br>
-            • Cancellations within 48 hours or no-shows forfeit the deposit.<br>
-            • Please arrive on time. Late arrivals may need rescheduling.<br>
-            • Frequent last-minute changes may affect future booking availability.
+            - A non-refundable deposit is required to secure your booking.<br>
+            - Appointments may be rescheduled once with 48 hours' notice.<br>
+            - Cancellations within 48 hours or no-shows forfeit the deposit.<br>
+            - Please arrive on time. Late arrivals may need rescheduling.<br>
+            - Frequent last-minute changes may affect future booking availability.
           </p>
 
           <hr style="margin: 25px 0;">
 
           <p style="text-align: center; color: red; font-weight: bold;">
-            ⚠️ This email confirms your appointment.
+            This email confirms your appointment.
           </p>
 
           <p>We look forward to welcoming you at our Melbourne studio.<br>
-          Please don’t hesitate to reply to this email if you have any questions.</p>
+          Please do not hesitate to reply to this email if you have any questions.</p>
 
           <p><strong>Warm regards,</strong><br>
           <strong>Hellenic Cosmetics</strong></p>
@@ -135,3 +136,4 @@ END:VCALENDAR
     };
   }
 };
+

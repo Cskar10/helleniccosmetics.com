@@ -36,6 +36,7 @@
             <th class="border px-4 py-2">Name</th>
             <th class="border px-4 py-2">Email</th>
             <th class="border px-4 py-2">Service</th>
+            <th class="border px-4 py-2">Phone</th>
             <th class="border px-4 py-2">Date</th>
             <th class="border px-4 py-2">Time</th>
             <th class="border px-4 py-2">Created At</th>
@@ -86,7 +87,7 @@
 
       // --- Load Bookings ---
       async function loadBookings(token) {
-        tableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-gray-500">Loading...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-gray-500">Loading...</td></tr>`;
 
         try {
           const res = await fetch("/.netlify/functions/getBookings", {
@@ -96,7 +97,7 @@
           const bookings = await res.json();
 
           if (!bookings || bookings.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-gray-500">No bookings found.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-gray-500">No bookings found.</td></tr>`;
             return;
           }
 
@@ -108,6 +109,7 @@
                 <td class="border px-3 py-2">${b.name}</td>
                 <td class="border px-3 py-2">${b.email}</td>
                 <td class="border px-3 py-2">${b.service}</td>
+                <td class="border px-3 py-2">${b.phone || "-"}</td>
                 <td class="border px-3 py-2">${b.date}</td>
                 <td class="border px-3 py-2">${b.time}</td>
                 <td class="border px-3 py-2">${b.created_at}</td>
@@ -170,7 +172,7 @@
           );
         } catch (err) {
           console.error("Error loading bookings:", err);
-          tableBody.innerHTML = `<tr><td colspan="8" class="p-4 text-red-600">Error loading bookings.</td></tr>`;
+          tableBody.innerHTML = `<tr><td colspan="9" class="p-4 text-red-600">Error loading bookings.</td></tr>`;
         }
       }
     });

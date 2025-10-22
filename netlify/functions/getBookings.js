@@ -25,7 +25,7 @@ exports.handler = async (event) => {
 
     // --- Query bookings ---
     const result = await client.query(`
-      SELECT id, name, email, service,
+      SELECT id, name, email, phone, service,
              appointment_datetime_local,
              appointment_datetime_utc,
              created_at
@@ -71,6 +71,7 @@ exports.handler = async (event) => {
         name: b.name,
         email: b.email,
         service: b.service,
+        phone: b.phone,
         date,
         time,
         created_at: createdDate,

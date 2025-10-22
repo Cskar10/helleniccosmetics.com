@@ -16,6 +16,7 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   const bookingData = {
     name: form.name.value.trim(),
     email: form.email.value.trim(),
+    phone: form.phone.value.trim(),
     date: form.date.value,
     time: form.time.value,
     service: form.service.value,
@@ -32,6 +33,16 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0 = Sunday
   const isSunday = dayOfWeek === 0;
   const isSaturday = dayOfWeek === 6;
+
+  const digitsOnlyPhone = bookingData.phone.replace(/\D/g, "");
+  if (digitsOnlyPhone.length < 8) {
+    messageEl.textContent = "Please enter a valid phone number with at least 8 digits.";
+    messageEl.classList.remove("hidden", "text-green-600");
+    messageEl.classList.add("text-red-600");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit";
+    return;
+  }
 
   if (isSaturday) {
     messageEl.textContent = saturdayClosedMessage;
@@ -78,6 +89,8 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
         message = "Bookings must be made at least 48 hours in advance.";
       } else if (message.toLowerCase().includes("saturday")) {
         message = saturdayClosedMessage;
+      } else if (message.toLowerCase().includes("phone")) {
+        message = "Please enter a valid phone number with at least 8 digits.";
       } else if (
         message.includes("5:30 PM") ||
         message.includes("9:00 PM") ||

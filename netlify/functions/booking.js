@@ -8,12 +8,23 @@ exports.handler = async (event) => {
 
   try {
     const data = JSON.parse(event.body);
-    const { name, email, date, time, service } = data;
+    const { name, email, phone, date, time, service } = data;
 
-    if (!name || !email || !date || !time || !service) {
+    if (!name || !email || !phone || !date || !time || !service) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Missing required fields." }),
+      };
+    }
+
+    const phoneTrimmed = phone.trim();
+    const phoneDigits = phoneTrimmed.replace(/\D/g, "");
+    if (phoneDigits.length < 8) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Phone number must contain at least 8 digits.",
+        }),
       };
     }
 
@@ -105,12 +116,12 @@ exports.handler = async (event) => {
     await client.connect();
     const insertQuery = `
       INSERT INTO bookings 
-        (name, email, service, appointment_datetime_local, appointment_datetime_utc, created_at)
-      VALUES ($1, $2, $3, $4, $5, NOW())
+        (name, email, phone, service, appointment_datetime_local, appointment_datetime_utc, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
       ON CONFLICT (email, appointment_datetime_utc) DO NOTHING
       RETURNING *;
     `;
-    const values = [name, email, service, melbourneForDB, utcForDB];
+    const values = [name, email, phoneTrimmed, service, melbourneForDB, utcForDB];
     const result = await client.query(insertQuery, values);
 
     if (result.rowCount === 0) {
@@ -138,11 +149,11 @@ exports.handler = async (event) => {
     // Policy text
     const policyText = `
 Future Bookings Policy:
-• A non-refundable deposit is required to secure your booking.
-• Appointments may be rescheduled once with 48 hours' notice.
-• Cancellations within 48 hours or no-shows forfeit the deposit.
-• Please arrive on time. Late arrivals may need rescheduling.
-• Frequent last-minute changes may affect future booking availability.
+- A non-refundable deposit is required to secure your booking.
+- Appointments may be rescheduled once with 48 hours' notice.
+- Cancellations within 48 hours or no-shows forfeit the deposit.
+- Please arrive on time. Late arrivals may need rescheduling.
+- Frequent last-minute changes may affect future booking availability.
 `;
 
     // Unified clean design
@@ -150,16 +161,17 @@ Future Bookings Policy:
       to: email,
       cc: adminEmail,
       from: { email: "bookings@helleniccosmetics.com", name: "Hellenic Cosmetics" },
-      subject: `Your Appointment Enquiry – ${service}`,
+      subject: `Your Appointment Enquiry - ${service}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
           <p>Dear ${name},</p>
 
           <p>Thank you for your appointment enquiry with <strong>Hellenic Cosmetics</strong>.</p>
 
-          <p><strong>📅 Requested Date:</strong> ${formattedDate}<br>
-          <strong>🕒 Requested Time:</strong> ${time}<br>
-          <strong>💆 Service:</strong> ${service}</p>
+          <p><strong>Requested Date:</strong> ${formattedDate}<br>
+          <strong>Requested Time:</strong> ${time}<br>
+          <strong>Service:</strong> ${service}<br>
+          <strong>Phone:</strong> ${phoneTrimmed}</p>
 
           <p>Your enquiry has been received. Our team will contact you shortly to confirm availability.</p>
 
@@ -168,22 +180,22 @@ Future Bookings Policy:
           <h3 style="color: #b8926a;">Future Bookings Policy</h3>
 
           <p>
-            • A non-refundable deposit is required to secure your booking.<br>
-            • Appointments may be rescheduled once with 48 hours' notice.<br>
-            • Cancellations within 48 hours or no-shows forfeit the deposit.<br>
-            • Please arrive on time. Late arrivals may need rescheduling.<br>
-            • Frequent last-minute changes may affect future booking availability.
+            - A non-refundable deposit is required to secure your booking.<br>
+            - Appointments may be rescheduled once with 48 hours' notice.<br>
+            - Cancellations within 48 hours or no-shows forfeit the deposit.<br>
+            - Please arrive on time. Late arrivals may need rescheduling.<br>
+            - Frequent last-minute changes may affect future booking availability.
           </p>
 
           <hr style="margin: 25px 0;">
 
           <p style="text-align: center; color: red; font-weight: bold;">
-            ⚠️ Please note: This email is an acknowledgement of your enquiry only.<br>
+            Please note: This email is an acknowledgement of your enquiry only.<br>
             A booking confirmation will follow within 48 hours.
           </p>
 
           <p>We look forward to welcoming you at our Melbourne studio.<br>
-          Please don’t hesitate to reply to this email if you have any questions.</p>
+          Please do not hesitate to reply to this email if you have any questions.</p>
 
           <p><strong>Warm regards,</strong><br>
           <strong>Hellenic Cosmetics</strong></p>
@@ -227,4 +239,7 @@ function getFirstSunday(year, month) {
   while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
+
+
+
 
