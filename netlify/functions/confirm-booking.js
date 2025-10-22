@@ -53,19 +53,31 @@ exports.handler = async (event) => {
     await client.end();
 
     // Build ICS calendar invite
-    const icsContent = `
-BEGIN:VCALENDAR
-VERSION:2.0
-PRODID:-//Hellenic Cosmetics//EN
-BEGIN:VEVENT
-UID:${booking.id}@helleniccosmetics.com
-DTSTAMP:${new Date().toISOString().replace(/[-:]/g, "").split(".")[0]}Z
-DTSTART;TZID=Australia/Melbourne:${booking.appointment_datetime_local.replace(/[-: ]/g, "").slice(0, 13)}00
-SUMMARY:Confirmed Appointment - ${booking.service}
-DESCRIPTION:Your appointment at Hellenic Cosmetics is confirmed.
-END:VEVENT
-END:VCALENDAR
-`;
+    const startUtc = toUTCDate(booking.appointment_datetime_local);
+    const durationMinutes = getServiceDuration(booking.service);
+    const endUtc = new Date(
+      startUtc.getTime() + durationMinutes * 60 * 1000
+    );
+    const icsContent = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Hellenic Cosmetics//EN",
+      "CALSCALE:GREGORIAN",
+      "METHOD:REQUEST",
+      "BEGIN:VEVENT",
+      `UID:${booking.id}@helleniccosmetics.com`,
+      `DTSTAMP:${formatICSDate(new Date())}`,
+      `DTSTART:${formatICSDate(startUtc)}`,
+      `DTEND:${formatICSDate(endUtc)}`,
+      `SUMMARY:${escapeICSText(`Confirmed Appointment - ${booking.service}`)}`,
+      `DESCRIPTION:${escapeICSText("Your appointment at Hellenic Cosmetics is confirmed.")}`,
+      `ORGANIZER;CN=Hellenic Cosmetics:mailto:bookings@helleniccosmetics.com`,
+      `ATTENDEE;CN=${escapeICSText(booking.name)};ROLE=REQ-PARTICIPANT:mailto:${booking.email}`,
+      "STATUS:CONFIRMED",
+      "END:VEVENT",
+      "END:VCALENDAR",
+      "",
+    ].join("\r\n");
 
     const formattedDate = new Date(
       booking.appointment_datetime_local.split(" ")[0]
@@ -147,4 +159,66 @@ END:VCALENDAR
     };
   }
 };
+
+const SERVICE_DURATIONS_MINUTES = {
+  "Brow Sculpt": 45,
+  "Brow Sculpt & Dye": 60,
+  "Brow Sculpt & Lamination": 70,
+  "Brow Sculpt, Dye & Lamination": 90,
+  "Male Brow Sculpting": 40,
+  "Lash Filler Lash Lift & Tint": 80,
+  "Korean Lash Lift & Tint": 90,
+  "Lash Filler or Korean Lash Lift, Brow Lamination, Sculpt & Dye": 150,
+  "Lash Filler or Korean Lash Lift, Brow Lamination & Sculpt": 135,
+};
+
+function getServiceDuration(serviceName = "") {
+  return SERVICE_DURATIONS_MINUTES[serviceName] || 60;
+}
+
+function toUTCDate(localDateTime) {
+  const [datePart, timePart] = localDateTime.split(" ");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute, second] = timePart.split(":").map(Number);
+  const offsetHours = getMelbourneOffset(year, month, day);
+  return new Date(
+    Date.UTC(year, month - 1, day, hour - offsetHours, minute, second || 0)
+  );
+}
+
+function formatICSDate(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  return (
+    date.getUTCFullYear().toString() +
+    pad(date.getUTCMonth() + 1) +
+    pad(date.getUTCDate()) +
+    "T" +
+    pad(date.getUTCHours()) +
+    pad(date.getUTCMinutes()) +
+    pad(date.getUTCSeconds()) +
+    "Z"
+  );
+}
+
+function escapeICSText(text = "") {
+  return text
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\r?\n/g, "\\n");
+}
+
+function getMelbourneOffset(year, month, day) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dstStart = getFirstSunday(year, 10);
+  const dstEnd = getFirstSunday(year + (month < 4 ? 0 : 1), 4);
+  const isDST = date >= dstStart || date < dstEnd;
+  return isDST ? 11 : 10;
+}
+
+function getFirstSunday(year, month) {
+  const d = new Date(Date.UTC(year, month - 1, 1));
+  while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
+  return d;
+}
 
