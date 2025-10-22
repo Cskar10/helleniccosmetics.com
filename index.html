@@ -303,28 +303,63 @@ details details details > div {
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
-    // Date picker setup
-    flatpickr("#datePicker", {
+    const OPERATING_HOURS = {
+      weekday: { min: "17:30", max: "21:00" },
+      sunday: { min: "10:00", max: "16:00" },
+    };
+
+    const timePicker = flatpickr("#timePicker", {
+      enableTime: true,
+      noCalendar: true,
+      dateFormat: "H:i",
+      altInput: true,
+      altFormat: "h:i K",
+      time_24hr: true,
+      minTime: OPERATING_HOURS.weekday.min,
+      maxTime: OPERATING_HOURS.weekday.max,
+      minuteIncrement: 15,
+      disableMobile: true,
+    });
+
+    const datePicker = flatpickr("#datePicker", {
       altInput: true,
       altFormat: "d/m/Y",
       dateFormat: "Y-m-d",
       minDate: "today",
-      disableMobile: true
+      disableMobile: true,
+      disable: [
+        function (date) {
+          return date.getDay() === 6; // Disable Saturdays
+        },
+      ],
+      onChange(selectedDates) {
+        syncTimePicker(selectedDates[0]);
+      },
+      onReady(selectedDates) {
+        syncTimePicker(selectedDates[0]);
+      },
     });
 
-    // Time picker setup (updated hours and format)
-    flatpickr("#timePicker", {
-      enableTime: true,
-      noCalendar: true,
-      dateFormat: "H:i", // send value as 24-hour format (e.g. "17:30")
-      altInput: true,
-      altFormat: "h:i K", // show user-friendly AM/PM format
-      time_24hr: true, // important for backend accuracy
-      minTime: "17:00", // earliest time: 5 PM
-      maxTime: "21:00", // latest time: 9 PM
-      minuteIncrement: 15, // 15-minute steps
-      disableMobile: true
-    });
+    function syncTimePicker(selectedDate) {
+      const isSunday = selectedDate && selectedDate.getDay() === 0;
+      const { min, max } = isSunday ? OPERATING_HOURS.sunday : OPERATING_HOURS.weekday;
+
+      timePicker.set({ minTime: min, maxTime: max });
+
+      const selectedTime = timePicker.selectedDates[0];
+      if (selectedTime && !isWithinRange(selectedTime, min, max)) {
+        timePicker.clear();
+      }
+    }
+
+    function isWithinRange(dateObj, min, max) {
+      const totalMinutes = dateObj.getHours() * 60 + dateObj.getMinutes();
+      const [minHour, minMinute] = min.split(":").map(Number);
+      const [maxHour, maxMinute] = max.split(":").map(Number);
+      const minMinutes = minHour * 60 + minMinute;
+      const maxMinutes = maxHour * 60 + maxMinute;
+      return totalMinutes >= minMinutes && totalMinutes <= maxMinutes;
+    }
   });
 </script>
 
@@ -994,8 +1029,8 @@ document.addEventListener("DOMContentLoaded", () => {
   <!-- Footer -->
   <footer class="bg-[#3a2e22] text-[#b8926a] py-8 text-center">
     <p>© 2025 Hellenic Cosmetics | South Morang, Melbourne</p>
-    <p>Open Mon–Sat, 5:30 PM – 9 PM</p>
-    <p>Sun, 10 AM – 4 PM</p>
+    <p>Open Mon-Fri, 5:30 PM - 9 PM</p>
+    <p>Sun, 10 AM - 4 PM</p>
     <div class="mt-4 flex justify-center space-x-3">
       <a href="https://www.instagram.com/helleniccosmetics?igsh=emxiaHd3MXU0b2I4"
          target="_blank"
@@ -1016,3 +1051,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
 </body>
 </html>
+

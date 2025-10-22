@@ -22,14 +22,25 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   };
 
   const operatingHoursMessage =
-    "Bookings are available Monday-Saturday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.";
+    "Bookings are available Monday-Friday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.";
+  const saturdayClosedMessage =
+    "We are closed on Saturdays. Please choose another day.";
 
-  // --- Time validation (Mon-Sat 5:30pm-9pm, Sun 10am-4pm) ---
+  // --- Time validation (Mon-Fri 5:30pm-9pm, Sun 10am-4pm) ---
   const [hour, minute] = form.time.value.split(":").map(Number);
   const [year, month, day] = form.date.value.split("-").map(Number);
   const dayOfWeek = new Date(Date.UTC(year, month - 1, day)).getUTCDay(); // 0 = Sunday
   const isSunday = dayOfWeek === 0;
+  const isSaturday = dayOfWeek === 6;
 
+  if (isSaturday) {
+    messageEl.textContent = saturdayClosedMessage;
+    messageEl.classList.remove("hidden", "text-green-600");
+    messageEl.classList.add("text-red-600");
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Submit";
+    return;
+  }
   const withinWeekdayHours =
     (hour > 17 || (hour === 17 && minute >= 30)) &&
     (hour < 21 || (hour === 21 && minute === 0));
@@ -40,7 +51,9 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
   const isWithinAllowedHours = isSunday ? withinSundayHours : withinWeekdayHours;
 
   if (!isWithinAllowedHours) {
-    messageEl.textContent = operatingHoursMessage;
+    messageEl.textContent = isSunday
+      ? "Sunday bookings are available between 10:00 AM and 4:00 PM."
+      : operatingHoursMessage;
     messageEl.classList.remove("hidden", "text-green-600");
     messageEl.classList.add("text-red-600");
     submitBtn.disabled = false;
@@ -63,12 +76,16 @@ document.getElementById("bookingForm").addEventListener("submit", async (e) => {
 
       if (message.includes("48 hours")) {
         message = "Bookings must be made at least 48 hours in advance.";
+      } else if (message.toLowerCase().includes("saturday")) {
+        message = saturdayClosedMessage;
       } else if (
         message.includes("5:30 PM") ||
         message.includes("9:00 PM") ||
         message.includes("10:00 AM")
       ) {
-        message = operatingHoursMessage;
+        message = message.includes("10:00 AM")
+          ? "Sunday bookings are available between 10:00 AM and 4:00 PM."
+          : operatingHoursMessage;
       }
 
       messageEl.textContent = message;

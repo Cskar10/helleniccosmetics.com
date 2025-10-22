@@ -51,14 +51,35 @@ exports.handler = async (event) => {
 
     const dayOfWeek = melbourneLocal.getDay(); // 0 = Sunday, 6 = Saturday
     const isSunday = dayOfWeek === 0;
+    const isSaturday = dayOfWeek === 6;
+    const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
 
-    // Rule 2: Booking time windows (Mon-Sat 5:30pm-9pm, Sun 10am-4pm)
+    if (isSaturday) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: "Bookings are not available on Saturdays. Please choose another day.",
+        }),
+      };
+    }
+
+    // Rule 2: Booking time windows (Mon-Fri 5:30pm-9pm, Sun 10am-4pm)
     const withinWeekdayHours =
       (hour > 17 || (hour === 17 && minute >= 30)) &&
       (hour < 21 || (hour === 21 && minute === 0));
     const withinSundayHours =
       (hour > 10 || (hour === 10 && minute >= 0)) &&
       (hour < 16 || (hour === 16 && minute === 0));
+
+    if (!isSunday && !isWeekday) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error:
+            "Bookings are available Monday-Friday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.",
+        }),
+      };
+    }
 
     const isWithinAllowedHours = isSunday ? withinSundayHours : withinWeekdayHours;
 
@@ -67,7 +88,7 @@ exports.handler = async (event) => {
         statusCode: 400,
         body: JSON.stringify({
           error:
-            "Bookings are available Monday-Saturday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.",
+            "Bookings are available Monday-Friday from 5:30 PM to 9:00 PM, and Sundays from 10:00 AM to 4:00 PM.",
         }),
       };
     }
