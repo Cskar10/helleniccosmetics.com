@@ -452,52 +452,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 </script>
 
-<!-- Booking Submit Script -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const form = document.getElementById("bookingForm");
-  const submitButton = form.querySelector("button[type='submit']");
-  let isSubmitting = false;
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    if (isSubmitting) return; // prevent duplicate submission
-    isSubmitting = true;
-    submitButton.disabled = true;
-    submitButton.innerText = "Sending...";
-
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-
-    try {
-      const res = await fetch("/.netlify/functions/booking", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      const json = await res.json();
-
-      if (!res.ok) {
-        alert(json.error || "Something went wrong submitting booking.");
-      } else {
-        alert("Enquiry confirmed!");
-        form.reset();
-      }
-    } catch (err) {
-      console.error("Booking submission error:", err);
-      alert("Error submitting booking.");
-    } finally {
-      isSubmitting = false;
-      submitButton.disabled = false;
-      submitButton.innerText = "Submit";
-    }
-  });
-});
-
-</script>
-
 <body class="bg-gray-50 text-gray-800 font-sans">
 
  <!-- Hero Section -->

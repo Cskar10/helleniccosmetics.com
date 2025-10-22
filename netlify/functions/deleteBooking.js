@@ -38,9 +38,28 @@ exports.handler = async (event, context) => {
     });
 
     await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS booking_locks (
+        email TEXT PRIMARY KEY
+      );
+    `);
 
-    // 4. Perform deletion
-    await client.query("DELETE FROM bookings WHERE id = $1", [id]);
+    // 4. Perform deletion and release booking lock
+    const deleteResult = await client.query(
+      "DELETE FROM bookings WHERE id = $1 RETURNING email",
+      [id]
+    );
+
+    if (deleteResult.rowCount > 0) {
+      const deletedEmail = deleteResult.rows[0]?.email;
+      if (deletedEmail) {
+        await client.query(
+          "DELETE FROM booking_locks WHERE email = $1",
+          [deletedEmail.trim().toLowerCase()]
+        );
+      }
+    }
+
     await client.end();
 
     return {

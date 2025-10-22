@@ -6,18 +6,32 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 exports.handler = async (event) => {
   console.log("Incoming booking request:", event.body);
 
+  let client;
+  let normalizedEmail = null;
+  let transactionStarted = false;
+
   try {
     const data = JSON.parse(event.body);
     const { name, email, phone, date, time, service } = data;
 
-    if (!name || !email || !phone || !date || !time || !service) {
+    const nameTrimmed = name?.trim();
+    const emailTrimmed = email?.trim();
+    const phoneTrimmed = phone?.trim();
+
+    if (
+      !nameTrimmed ||
+      !emailTrimmed ||
+      !phoneTrimmed ||
+      !date ||
+      !time ||
+      !service
+    ) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: "Missing required fields." }),
       };
     }
 
-    const phoneTrimmed = phone.trim();
     const phoneDigits = phoneTrimmed.replace(/\D/g, "");
     if (phoneDigits.length < 8) {
       return {
@@ -104,7 +118,7 @@ exports.handler = async (event) => {
       };
     }
     // Step 3: Connect to PostgreSQL
-    const client = new Client({
+    client = new Client({
       host: process.env.PGHOST,
       port: process.env.PGPORT,
       user: process.env.PGUSER,
@@ -114,6 +128,39 @@ exports.handler = async (event) => {
     });
 
     await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS booking_locks (
+        email TEXT PRIMARY KEY
+      );
+    `);
+
+    normalizedEmail = emailTrimmed.toLowerCase();
+
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const lockResult = await client.query(
+      `INSERT INTO booking_locks (email)
+       VALUES ($1)
+       ON CONFLICT DO NOTHING
+       RETURNING email;`,
+      [normalizedEmail]
+    );
+
+    if (lockResult.rowCount === 0) {
+      await client.query("ROLLBACK");
+      transactionStarted = false;
+      await client.end();
+      client = null;
+      return {
+        statusCode: 409,
+        body: JSON.stringify({
+          error:
+            "You already have a pending enquiry awaiting confirmation. Please wait for our response before booking again.",
+        }),
+      };
+    }
+
     const insertQuery = `
       INSERT INTO bookings 
         (name, email, phone, service, appointment_datetime_local, appointment_datetime_utc, created_at)
@@ -121,11 +168,21 @@ exports.handler = async (event) => {
       ON CONFLICT (email, appointment_datetime_utc) DO NOTHING
       RETURNING *;
     `;
-    const values = [name, email, phoneTrimmed, service, melbourneForDB, utcForDB];
+    const values = [
+      nameTrimmed,
+      emailTrimmed,
+      phoneTrimmed,
+      service,
+      melbourneForDB,
+      utcForDB,
+    ];
     const result = await client.query(insertQuery, values);
 
     if (result.rowCount === 0) {
+      await client.query("COMMIT");
+      transactionStarted = false;
       await client.end();
+      client = null;
       return {
         statusCode: 409,
         body: JSON.stringify({
@@ -136,7 +193,10 @@ exports.handler = async (event) => {
     }
 
     const booking = result.rows[0];
+    await client.query("COMMIT");
+    transactionStarted = false;
     await client.end();
+    client = null;
 
     const adminEmail = process.env.ADMIN_EMAIL;
     const formattedDate = new Date(date).toLocaleDateString("en-AU", {
@@ -146,25 +206,15 @@ exports.handler = async (event) => {
       day: "numeric",
     });
 
-    // Policy text
-    const policyText = `
-Future Bookings Policy:
-- A non-refundable deposit is required to secure your booking.
-- Appointments may be rescheduled once with 48 hours' notice.
-- Cancellations within 48 hours or no-shows forfeit the deposit.
-- Please arrive on time. Late arrivals may need rescheduling.
-- Frequent last-minute changes may affect future booking availability.
-`;
-
     // Unified clean design
     const msg = {
-      to: email,
+      to: emailTrimmed,
       cc: adminEmail,
       from: { email: "bookings@helleniccosmetics.com", name: "Hellenic Cosmetics" },
       subject: `Your Appointment Enquiry - ${service}`,
       html: `
         <div style="font-family: Arial, sans-serif; color: #333; line-height: 1.6;">
-          <p>Dear ${name},</p>
+          <p>Dear ${nameTrimmed},</p>
 
           <p>Thank you for your appointment enquiry with <strong>Hellenic Cosmetics</strong>.</p>
 
@@ -215,6 +265,26 @@ Future Bookings Policy:
     };
   } catch (error) {
     console.error("Booking error details:", error);
+    if (client) {
+      try {
+        if (transactionStarted) {
+          await client.query("ROLLBACK");
+          if (normalizedEmail) {
+            await client.query(`DELETE FROM booking_locks WHERE email = $1`, [
+              normalizedEmail,
+            ]);
+          }
+        }
+      } catch (cleanupError) {
+        console.error("Booking cleanup error:", cleanupError);
+      }
+      try {
+        await client.end();
+      } catch (endError) {
+        console.error("Error closing DB connection:", endError);
+      }
+      client = null;
+    }
     return {
       statusCode: 500,
       body: JSON.stringify({

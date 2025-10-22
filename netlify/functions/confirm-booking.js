@@ -16,6 +16,11 @@ exports.handler = async (event) => {
     });
 
     await client.connect();
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS booking_locks (
+        email TEXT PRIMARY KEY
+      );
+    `);
 
     // Fetch existing booking
     const result = await client.query("SELECT * FROM bookings WHERE id=$1", [id]);
@@ -29,6 +34,7 @@ exports.handler = async (event) => {
     // If "change", update date/time
     if (action === "change") {
       if (!newDate || !newTime) {
+        await client.end();
         return { statusCode: 400, body: JSON.stringify({ error: "Missing new date/time" }) };
       }
 
@@ -38,6 +44,11 @@ exports.handler = async (event) => {
       );
       booking.appointment_datetime_local = `${newDate} ${newTime}:00`;
     }
+
+    await client.query(
+      `DELETE FROM booking_locks WHERE email = $1`,
+      [booking.email.trim().toLowerCase()]
+    );
 
     await client.end();
 
