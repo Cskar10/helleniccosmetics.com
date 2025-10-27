@@ -10,9 +10,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-  <link rel="preload" href="/fonts/Coterie.cbd38104ca9c6033d5581cc50e45479b.5df08d61c5d4ec2543dcd071da2df70.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/La_Luxes_Serif.e950dd1c95900db9dfb986bfa.ae9188856ae2e54031760c828bda083.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="/fonts/Scandilover_Script14408943202640877019.e.161a7e1bed95819b8df6b95448903357.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/images/marble-bg.webp" as="image" imagesrcset="/images/marble-bg.webp" imagesizes="100vw" fetchpriority="high" type="image/webp">
   <link rel="preload" href="/styles/main.css" as="style">
   <link rel="stylesheet" href="/styles/main.css" media="print" onload="this.media='all'">
@@ -470,11 +467,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
  <!-- Hero Section -->
 <section class="relative text-white text-center py-20 bg-cover bg-center"
-         style="background-image: url('images/marble-bg.jpg'); background-image: image-set(url('images/marble-bg.webp') type('image/webp'), url('images/marble-bg.jpg') type('image/jpeg')); background-size: cover; background-position: center;"
-         role="img"
-         aria-label="Hellenic Cosmetics studio background">
+         style="background-image: url('images/marble-bg.jpg'); background-image: image-set(url('images/marble-bg.webp') type('image/webp'), url('images/marble-bg.jpg') type('image/jpeg')); background-size: cover; background-position: center;">
   <div class="relative z-10 max-w-3xl mx-auto px-4">
-    <picture class="mx-auto mb-6 block w-48 md:w-56" style="aspect-ratio: 224 / 215;">
+    <picture class="mx-auto mb-6 block w-48 md:w-56">
       <source srcset="images/logo.webp" type="image/webp">
       <img
         src="images/logo.png"
@@ -828,7 +823,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <h2 class="text-4xl font-bold text-center mb-12 tracking-wider uppercase" style="font-family: 'Cormorant Garamond', serif;">GALLERY</h2>
   
   <div class="grid md:grid-cols-3 gap-4 items-start justify-items-center">
-    <picture class="block w-full max-w-sm" style="aspect-ratio: 1;">
+    <picture class="block w-full max-w-sm">
       <source
         type="image/webp"
         srcset="images/brow1-400.webp 400w, images/brow1-800.webp 600w"
@@ -842,7 +837,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loading="lazy"
         decoding="async">
     </picture>
-    <picture class="block w-full max-w-sm" style="aspect-ratio: 1;">
+    <picture class="block w-full max-w-sm">
       <source
         type="image/webp"
         srcset="images/brow2-400.webp 400w, images/brow2-800.webp 600w"
@@ -856,7 +851,7 @@ document.addEventListener("DOMContentLoaded", () => {
         loading="lazy"
         decoding="async">
     </picture>
-    <picture class="block w-full max-w-sm" style="aspect-ratio: 1;">
+    <picture class="block w-full max-w-sm">
       <source
         type="image/webp"
         srcset="images/brow3-400.webp 400w, images/brow3-800.webp 600w"
