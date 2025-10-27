@@ -4,8 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Admin Login - Hellenic Cosmetics</title>
-  <link rel="stylesheet" href="/styles/main.css" />
-  <script src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
+  <link rel="preconnect" href="https://identity.netlify.com" crossorigin>
+  <link rel="preload" href="/styles/main.css" as="style">
+  <link rel="stylesheet" href="/styles/main.css" media="print" onload="this.media='all'">
+  <noscript><link rel="stylesheet" href="/styles/main.css"></noscript>
+  <script defer src="https://identity.netlify.com/v1/netlify-identity-widget.js"></script>
 </head>
 <body class="bg-gray-100 flex items-center justify-center h-screen">
   <div class="bg-white p-8 rounded shadow w-96 text-center">
@@ -14,25 +17,27 @@
   </div>
 
   <script>
-    const loginBtn = document.getElementById("login-btn");
+    document.addEventListener("DOMContentLoaded", () => {
+      const loginBtn = document.getElementById("login-btn");
 
-    // Always start clean (clear any cached session)
-    netlifyIdentity.on("init", user => {
-      if (user) netlifyIdentity.logout();
+      // Always start clean (clear any cached session)
+      netlifyIdentity.on("init", (user) => {
+        if (user) netlifyIdentity.logout();
+      });
+
+      // Open login modal on click
+      loginBtn.addEventListener("click", () => {
+        netlifyIdentity.open("login");
+      });
+
+      // Redirect to admin page after login
+      netlifyIdentity.on("login", () => {
+        window.location.href = "/admin.html";
+      });
+
+      // Initialize the widget once
+      netlifyIdentity.init();
     });
-
-    // Open login modal on click
-    loginBtn.addEventListener("click", () => {
-      netlifyIdentity.open("login");
-    });
-
-    // Redirect to admin page after login
-    netlifyIdentity.on("login", () => {
-      window.location.href = "/admin.html";
-    });
-
-    // Initialize the widget once
-    netlifyIdentity.init();
   </script>
 </body>
 </html>
