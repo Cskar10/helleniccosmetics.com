@@ -4,6 +4,9 @@
   "description": "Hellenic Cosmetics – Appointment Enquiry System with Email Notifications",
   "main": "index.html",
   "license": "MIT",
+  "scripts": {
+    "build:css": "npx tailwindcss -i ./src/tailwind.css -o ./styles/main.css --minify"
+  },
   "dependencies": {
     "@sendgrid/mail": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
