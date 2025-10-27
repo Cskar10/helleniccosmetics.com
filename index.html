@@ -458,8 +458,19 @@ document.addEventListener("DOMContentLoaded", () => {
 <section class="relative text-white text-center py-20 bg-cover bg-center"
          style="background-image: url('images/marble-bg.jpg'); background-size: cover; background-position: center;">
   <div class="relative z-10 max-w-3xl mx-auto px-4">
-    <img src="images/logo.png" alt="Hellenic Cosmetics Logo" class="w-48 md:w-56 mx-auto mb-6">
-	
+    <picture class="mx-auto mb-6 block w-48 md:w-56">
+      <source srcset="images/logo.webp" type="image/webp">
+      <img
+        src="images/logo.png"
+        width="224"
+        height="215"
+        alt="Hellenic Cosmetics Logo"
+        class="w-full h-auto"
+        loading="eager"
+        decoding="async"
+      >
+    </picture>
+		
 	</div>
 
   <!-- Centered Text Wrapper -->
@@ -801,9 +812,48 @@ document.addEventListener("DOMContentLoaded", () => {
   <h2 class="text-4xl font-bold text-center mb-12 tracking-wider uppercase" style="font-family: 'Cormorant Garamond', serif;">GALLERY</h2>
   
   <div class="grid md:grid-cols-3 gap-4 items-start justify-items-center">
-    <img src="images/brow1.jpg" class="rounded-lg shadow-md">
-    <img src="images/brow2.jpg" class="rounded-lg shadow-md">
-    <img src="images/brow3.jpg" class="rounded-lg shadow-md">
+    <picture class="block w-full max-w-sm">
+      <source
+        type="image/webp"
+        srcset="images/brow1-400.webp 400w, images/brow1-800.webp 600w"
+        sizes="(min-width: 1024px) 20vw, (min-width: 768px) 30vw, 80vw">
+      <img
+        src="images/brow1.jpg"
+        width="600"
+        height="600"
+        alt="Brow styling result"
+        class="w-full h-auto rounded-lg shadow-md"
+        loading="lazy"
+        decoding="async">
+    </picture>
+    <picture class="block w-full max-w-sm">
+      <source
+        type="image/webp"
+        srcset="images/brow2-400.webp 400w, images/brow2-800.webp 600w"
+        sizes="(min-width: 1024px) 20vw, (min-width: 768px) 30vw, 80vw">
+      <img
+        src="images/brow2.jpg"
+        width="600"
+        height="600"
+        alt="Lash lift result"
+        class="w-full h-auto rounded-lg shadow-md"
+        loading="lazy"
+        decoding="async">
+    </picture>
+    <picture class="block w-full max-w-sm">
+      <source
+        type="image/webp"
+        srcset="images/brow3-400.webp 400w, images/brow3-800.webp 600w"
+        sizes="(min-width: 1024px) 20vw, (min-width: 768px) 30vw, 80vw">
+      <img
+        src="images/brow3.jpg"
+        width="600"
+        height="600"
+        alt="Brow sculpt and dye result"
+        class="w-full h-auto rounded-lg shadow-md"
+        loading="lazy"
+        decoding="async">
+    </picture>
   </div>
 </section>
 
