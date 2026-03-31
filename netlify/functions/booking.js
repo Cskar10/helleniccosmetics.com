@@ -1,7 +1,7 @@
 const { createClient } = require("@libsql/client");
-const sgMail = require("@sendgrid/mail");
+// const sgMail = require("@sendgrid/mail");
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+// sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 exports.handler = async (event) => {
   console.log("Incoming booking request:", event.body);
@@ -223,7 +223,7 @@ exports.handler = async (event) => {
       `,
     };
 
-    await sgMail.send(msg);
+//    await sgMail.send(msg);
     console.info("Enquiry email sent successfully.");
 
     return {
