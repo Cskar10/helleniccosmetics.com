@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { createClient } = require("@libsql/client");
 const jwt = require("jsonwebtoken");
 
 exports.handler = async (event, context) => {
@@ -7,7 +7,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // 1. Verify Netlify Identity token
+    // 1. Verify token
     const authHeader = event.headers.authorization || "";
     const token = authHeader.replace("Bearer ", "").trim();
 
@@ -15,7 +15,6 @@ exports.handler = async (event, context) => {
       return { statusCode: 401, body: JSON.stringify({ error: "Missing token" }) };
     }
 
-    // Validate Netlify Identity JWT
     const decoded = jwt.decode(token);
     if (!decoded || !decoded.email) {
       return { statusCode: 401, body: JSON.stringify({ error: "Unauthorized" }) };
@@ -27,40 +26,31 @@ exports.handler = async (event, context) => {
       return { statusCode: 400, body: JSON.stringify({ error: "Missing booking ID" }) };
     }
 
-    // 3. Connect to PostgreSQL
-    const client = new Client({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      database: process.env.PGDATABASE,
-      ssl: { rejectUnauthorized: false },
+    // 3. Connect to Turso
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
     });
 
-    await client.connect();
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS booking_locks (
-        email TEXT PRIMARY KEY
-      );
-    `);
+    // 4. Get the email before deleting
+    const selectResult = await client.execute({
+      sql: "SELECT email FROM bookings WHERE id = ?",
+      args: [id],
+    });
 
-    // 4. Perform deletion and release booking lock
-    const deleteResult = await client.query(
-      "DELETE FROM bookings WHERE id = $1 RETURNING email",
-      [id]
-    );
+    // 5. Delete the booking
+    await client.execute({ sql: "DELETE FROM bookings WHERE id = ?", args: [id] });
 
-    if (deleteResult.rowCount > 0) {
-      const deletedEmail = deleteResult.rows[0]?.email;
+    // 6. Release booking lock
+    if (selectResult.rows.length > 0) {
+      const deletedEmail = String(selectResult.rows[0].email || "").trim().toLowerCase();
       if (deletedEmail) {
-        await client.query(
-          "DELETE FROM booking_locks WHERE email = $1",
-          [deletedEmail.trim().toLowerCase()]
-        );
+        await client.execute({
+          sql: "DELETE FROM booking_locks WHERE email = ?",
+          args: [deletedEmail],
+        });
       }
     }
-
-    await client.end();
 
     return {
       statusCode: 200,

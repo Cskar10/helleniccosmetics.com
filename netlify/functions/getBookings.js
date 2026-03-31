@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { createClient } = require("@libsql/client");
 const jwt = require("jsonwebtoken");
 
 exports.handler = async (event) => {
@@ -11,53 +11,37 @@ exports.handler = async (event) => {
     const decoded = jwt.decode(token);
     if (!decoded) return { statusCode: 401, body: "Invalid token" };
 
-    // --- Connect to DB ---
-    const client = new Client({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      database: process.env.PGDATABASE,
-      ssl: { rejectUnauthorized: false },
+    // --- Connect to Turso ---
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
     });
 
-    await client.connect();
-
     // --- Query bookings ---
-    const result = await client.query(`
-      SELECT id, name, email, phone, service,
-             appointment_datetime_local,
-             appointment_datetime_utc,
-             created_at
-      FROM bookings
-      ORDER BY appointment_datetime_local ASC;
-    `);
+    const result = await client.execute(
+      "SELECT id, name, email, phone, service, appointment_datetime_local, appointment_datetime_utc, created_at FROM bookings ORDER BY appointment_datetime_local ASC"
+    );
 
-    await client.end();
-
-    // --- Step 3: Format date/time for display ---
+    // --- Format date/time for display ---
     const formatted = result.rows.map((b) => {
-      let localDateTime = null;
       let date = "Invalid Date";
       let time = "Invalid Time";
 
-      if (b.appointment_datetime_local) {
-        localDateTime = new Date(b.appointment_datetime_local);
-        if (!isNaN(localDateTime.getTime())) {
-          date = localDateTime.toLocaleDateString("en-AU", {
+      const localDateTime = String(b.appointment_datetime_local || "");
+      if (localDateTime.includes(" ")) {
+        const [datePart, timePart] = localDateTime.split(" ");
+        const parsed = new Date(datePart);
+        if (!isNaN(parsed.getTime())) {
+          date = parsed.toLocaleDateString("en-AU", {
             year: "numeric",
             month: "2-digit",
             day: "2-digit",
           });
-          time = localDateTime.toLocaleTimeString("en-AU", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          });
         }
+        time = timePart ? timePart.substring(0, 5) : "Invalid Time";
       }
 
-      const createdAt = new Date(b.created_at);
+      const createdAt = new Date(String(b.created_at || ""));
       const createdDate = !isNaN(createdAt.getTime())
         ? createdAt.toLocaleDateString("en-AU", {
             year: "numeric",

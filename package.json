@@ -8,9 +8,9 @@
     "build:css": "npx tailwindcss -i ./src/tailwind.css -o ./styles/main.css --minify"
   },
   "dependencies": {
+    "@libsql/client": "^0.14.0",
     "@sendgrid/mail": "^8.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3"
+    "jsonwebtoken": "^9.0.2"
   },
   "engines": {
     "node": ">=18.x"

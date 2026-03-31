@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { createClient } = require("@libsql/client");
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -6,26 +6,14 @@ exports.handler = async (event) => {
   try {
     const { id, action, newDate, newTime } = JSON.parse(event.body);
 
-    const client = new Client({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      database: process.env.PGDATABASE,
-      ssl: { rejectUnauthorized: false },
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
     });
 
-    await client.connect();
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS booking_locks (
-        email TEXT PRIMARY KEY
-      );
-    `);
-
     // Fetch existing booking
-    const result = await client.query("SELECT * FROM bookings WHERE id=$1", [id]);
+    const result = await client.execute({ sql: "SELECT * FROM bookings WHERE id = ?", args: [id] });
     if (result.rows.length === 0) {
-      await client.end();
       return { statusCode: 404, body: JSON.stringify({ error: "Booking not found" }) };
     }
 
@@ -34,30 +22,26 @@ exports.handler = async (event) => {
     // If "change", update date/time
     if (action === "change") {
       if (!newDate || !newTime) {
-        await client.end();
         return { statusCode: 400, body: JSON.stringify({ error: "Missing new date/time" }) };
       }
 
-      await client.query(
-        `UPDATE bookings SET appointment_datetime_local=$1 WHERE id=$2`,
-        [`${newDate} ${newTime}:00`, id]
-      );
+      await client.execute({
+        sql: "UPDATE bookings SET appointment_datetime_local = ? WHERE id = ?",
+        args: [`${newDate} ${newTime}:00`, id],
+      });
       booking.appointment_datetime_local = `${newDate} ${newTime}:00`;
     }
 
-    await client.query(
-      `DELETE FROM booking_locks WHERE email = $1`,
-      [booking.email.trim().toLowerCase()]
-    );
-
-    await client.end();
+    // Release the booking lock
+    await client.execute({
+      sql: "DELETE FROM booking_locks WHERE email = ?",
+      args: [String(booking.email).trim().toLowerCase()],
+    });
 
     // Build ICS calendar invite
-    const startUtc = toUTCDate(booking.appointment_datetime_local);
-    const durationMinutes = getServiceDuration(booking.service);
-    const endUtc = new Date(
-      startUtc.getTime() + durationMinutes * 60 * 1000
-    );
+    const startUtc = toUTCDate(String(booking.appointment_datetime_local));
+    const durationMinutes = getServiceDuration(String(booking.service));
+    const endUtc = new Date(startUtc.getTime() + durationMinutes * 60 * 1000);
     const icsContent = [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
@@ -72,15 +56,16 @@ exports.handler = async (event) => {
       `SUMMARY:${escapeICSText(`Confirmed Appointment - ${booking.service}`)}`,
       `DESCRIPTION:${escapeICSText("Your appointment at Hellenic Cosmetics is confirmed.")}`,
       `ORGANIZER;CN=Hellenic Cosmetics:mailto:bookings@helleniccosmetics.com`,
-      `ATTENDEE;CN=${escapeICSText(booking.name)};ROLE=REQ-PARTICIPANT:mailto:${booking.email}`,
+      `ATTENDEE;CN=${escapeICSText(String(booking.name))};ROLE=REQ-PARTICIPANT:mailto:${booking.email}`,
       "STATUS:CONFIRMED",
       "END:VEVENT",
       "END:VCALENDAR",
       "",
     ].join("\r\n");
 
+    const localDateTime = String(booking.appointment_datetime_local);
     const formattedDate = new Date(
-      booking.appointment_datetime_local.split(" ")[0]
+      localDateTime.split(" ")[0]
     ).toLocaleDateString("en-AU", {
       weekday: "long",
       year: "numeric",
@@ -89,7 +74,7 @@ exports.handler = async (event) => {
     });
 
     const msg = {
-      to: booking.email,
+      to: String(booking.email),
       from: { email: "bookings@helleniccosmetics.com", name: "Hellenic Cosmetics" },
       subject: "Your Appointment is Confirmed",
       html: `
@@ -99,7 +84,7 @@ exports.handler = async (event) => {
           <p>We are pleased to confirm your appointment with <strong>Hellenic Cosmetics</strong>.</p>
 
           <p><strong>Appointment Date:</strong> ${formattedDate}<br>
-          <strong>Appointment Time:</strong> ${booking.appointment_datetime_local.split(" ")[1]}<br>
+          <strong>Appointment Time:</strong> ${localDateTime.split(" ")[1]}<br>
           <strong>Service:</strong> ${booking.service}<br>
           <strong>Phone:</strong> ${booking.phone || ""}</p>
 
@@ -221,4 +206,3 @@ function getFirstSunday(year, month) {
   while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
-

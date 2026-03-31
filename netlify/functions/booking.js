@@ -1,4 +1,4 @@
-const { Client } = require("pg");
+const { createClient } = require("@libsql/client");
 const sgMail = require("@sendgrid/mail");
 
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -6,9 +6,7 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 exports.handler = async (event) => {
   console.log("Incoming booking request:", event.body);
 
-  let client;
   let normalizedEmail = null;
-  let transactionStarted = false;
 
   try {
     const data = JSON.parse(event.body);
@@ -74,7 +72,7 @@ exports.handler = async (event) => {
       };
     }
 
-    const dayOfWeek = melbourneLocal.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayOfWeek = melbourneLocal.getDay();
     const isSunday = dayOfWeek === 0;
     const isSaturday = dayOfWeek === 6;
     const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
@@ -88,7 +86,6 @@ exports.handler = async (event) => {
       };
     }
 
-    // Rule 2: Booking time windows (Mon-Fri 5:30pm-9pm, Sun 10am-4pm)
     const withinWeekdayHours =
       (hour > 17 || (hour === 17 && minute >= 30)) &&
       (hour < 21 || (hour === 21 && minute === 0));
@@ -117,41 +114,22 @@ exports.handler = async (event) => {
         }),
       };
     }
-    // Step 3: Connect to PostgreSQL
-    client = new Client({
-      host: process.env.PGHOST,
-      port: process.env.PGPORT,
-      user: process.env.PGUSER,
-      password: process.env.PGPASSWORD,
-      database: process.env.PGDATABASE,
-      ssl: { rejectUnauthorized: false },
-    });
 
-    await client.connect();
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS booking_locks (
-        email TEXT PRIMARY KEY
-      );
-    `);
+    // Connect to Turso
+    const client = createClient({
+      url: process.env.TURSO_DATABASE_URL,
+      authToken: process.env.TURSO_AUTH_TOKEN,
+    });
 
     normalizedEmail = emailTrimmed.toLowerCase();
 
-    await client.query("BEGIN");
-    transactionStarted = true;
+    // Try to acquire lock
+    const lockResult = await client.execute({
+      sql: "INSERT OR IGNORE INTO booking_locks (email) VALUES (?)",
+      args: [normalizedEmail],
+    });
 
-    const lockResult = await client.query(
-      `INSERT INTO booking_locks (email)
-       VALUES ($1)
-       ON CONFLICT DO NOTHING
-       RETURNING email;`,
-      [normalizedEmail]
-    );
-
-    if (lockResult.rowCount === 0) {
-      await client.query("ROLLBACK");
-      transactionStarted = false;
-      await client.end();
-      client = null;
+    if (lockResult.rowsAffected === 0) {
       return {
         statusCode: 409,
         body: JSON.stringify({
@@ -161,42 +139,35 @@ exports.handler = async (event) => {
       };
     }
 
-    const insertQuery = `
-      INSERT INTO bookings 
-        (name, email, phone, service, appointment_datetime_local, appointment_datetime_utc, created_at)
-      VALUES ($1, $2, $3, $4, $5, $6, NOW())
-      ON CONFLICT (email, appointment_datetime_utc) DO NOTHING
-      RETURNING *;
-    `;
-    const values = [
-      nameTrimmed,
-      emailTrimmed,
-      phoneTrimmed,
-      service,
-      melbourneForDB,
-      utcForDB,
-    ];
-    const result = await client.query(insertQuery, values);
-
-    if (result.rowCount === 0) {
-      await client.query("COMMIT");
-      transactionStarted = false;
-      await client.end();
-      client = null;
-      return {
-        statusCode: 409,
-        body: JSON.stringify({
-          error:
-            "You already have a pending enquiry for this email and time slot. Please wait for a confirmation or choose a different time.",
-        }),
-      };
+    // Insert booking
+    const createdAt = new Date().toISOString();
+    try {
+      await client.execute({
+        sql: `INSERT INTO bookings (name, email, phone, service, appointment_datetime_local, appointment_datetime_utc, created_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        args: [nameTrimmed, emailTrimmed, phoneTrimmed, service, melbourneForDB, utcForDB, createdAt],
+      });
+    } catch (insertErr) {
+      // Duplicate booking — clean up lock
+      if (insertErr.message && insertErr.message.includes("UNIQUE")) {
+        await client.execute({ sql: "DELETE FROM booking_locks WHERE email = ?", args: [normalizedEmail] });
+        return {
+          statusCode: 409,
+          body: JSON.stringify({
+            error:
+              "You already have a pending enquiry for this email and time slot. Please wait for a confirmation or choose a different time.",
+          }),
+        };
+      }
+      throw insertErr;
     }
 
+    // Fetch the inserted booking
+    const result = await client.execute({
+      sql: "SELECT * FROM bookings WHERE email = ? AND appointment_datetime_utc = ?",
+      args: [emailTrimmed, utcForDB],
+    });
     const booking = result.rows[0];
-    await client.query("COMMIT");
-    transactionStarted = false;
-    await client.end();
-    client = null;
 
     const adminEmail = process.env.ADMIN_EMAIL;
     const formattedDate = new Date(date).toLocaleDateString("en-AU", {
@@ -206,7 +177,6 @@ exports.handler = async (event) => {
       day: "numeric",
     });
 
-    // Unified clean design
     const msg = {
       to: emailTrimmed,
       cc: adminEmail,
@@ -265,25 +235,17 @@ exports.handler = async (event) => {
     };
   } catch (error) {
     console.error("Booking error details:", error);
-    if (client) {
+    // Attempt cleanup
+    if (normalizedEmail) {
       try {
-        if (transactionStarted) {
-          await client.query("ROLLBACK");
-          if (normalizedEmail) {
-            await client.query(`DELETE FROM booking_locks WHERE email = $1`, [
-              normalizedEmail,
-            ]);
-          }
-        }
+        const client = createClient({
+          url: process.env.TURSO_DATABASE_URL,
+          authToken: process.env.TURSO_AUTH_TOKEN,
+        });
+        await client.execute({ sql: "DELETE FROM booking_locks WHERE email = ?", args: [normalizedEmail] });
       } catch (cleanupError) {
         console.error("Booking cleanup error:", cleanupError);
       }
-      try {
-        await client.end();
-      } catch (endError) {
-        console.error("Error closing DB connection:", endError);
-      }
-      client = null;
     }
     return {
       statusCode: 500,
@@ -309,7 +271,3 @@ function getFirstSunday(year, month) {
   while (d.getUTCDay() !== 0) d.setUTCDate(d.getUTCDate() + 1);
   return d;
 }
-
-
-
-
